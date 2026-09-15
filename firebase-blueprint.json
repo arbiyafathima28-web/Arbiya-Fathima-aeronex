@@ -1,0 +1,198 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated researcher or economist user profile",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID",
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "User email address"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name",
+          "maxLength": 100
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Avatar image URL",
+          "maxLength": 500
+        },
+        "preferredMethod": {
+          "type": "string",
+          "description": "Preferred econometric index formulation",
+          "enum": ["laspeyres", "fisher", "paasche", "jevons"]
+        },
+        "role": {
+          "type": "string",
+          "description": "User institutional designation",
+          "maxLength": 80
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last update timestamp"
+        }
+      },
+      "required": ["userId", "email", "createdAt"]
+    },
+    "SimulationScenario": {
+      "title": "SimulationScenario",
+      "description": "Custom MoCA / RBI policy simulation scenario created by user",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique scenario ID",
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner UID",
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Scenario title",
+          "maxLength": 120
+        },
+        "fuelShockPercent": {
+          "type": "number",
+          "description": "Aviation Turbine Fuel price shock percentage"
+        },
+        "capRule": {
+          "type": "string",
+          "description": "Regulatory fare band cap policy",
+          "maxLength": 50
+        },
+        "festivalSurge": {
+          "type": "number",
+          "description": "Festive demand surge factor"
+        },
+        "capacityShock": {
+          "type": "number",
+          "description": "Air fleet seat capacity contraction percentage"
+        },
+        "cpiBasisPointsImpact": {
+          "type": "number",
+          "description": "Projected transmission to headline CPI in basis points"
+        },
+        "nationalSurplusShiftCr": {
+          "type": "number",
+          "description": "Consumer to carrier surplus reallocation in INR Crores"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the scenario was simulated"
+        }
+      },
+      "required": ["id", "userId", "title", "createdAt"]
+    },
+    "WatchlistSector": {
+      "title": "WatchlistSector",
+      "description": "Aviation route bookmarked by the user for real-time monitoring",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Watchlist entry ID",
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner UID",
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "routeId": {
+          "type": "string",
+          "description": "Target corridor ID (e.g. del-bom)",
+          "maxLength": 50
+        },
+        "sectorName": {
+          "type": "string",
+          "description": "Corridor label",
+          "maxLength": 100
+        },
+        "alertThreshold": {
+          "type": "number",
+          "description": "Threshold price alert in INR"
+        },
+        "notes": {
+          "type": "string",
+          "description": "User notes on volatility or seasonality",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": ["id", "userId", "routeId", "sectorName", "createdAt"]
+    },
+    "SavedReport": {
+      "title": "SavedReport",
+      "description": "AI-synthesized inflation intelligence or MoSPI briefing note saved by user",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Report ID",
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner UID",
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Report briefing title",
+          "maxLength": 150
+        },
+        "analysisType": {
+          "type": "string",
+          "description": "Econometric model archetype",
+          "maxLength": 60
+        },
+        "content": {
+          "type": "string",
+          "description": "Markdown report text",
+          "maxLength": 25000
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": ["id", "userId", "title", "content", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile with personal econometric configuration"
+    },
+    "/users/{userId}/simulations/{simulationId}": {
+      "schema": "SimulationScenario",
+      "description": "Saved policy simulation scenarios owned by user"
+    },
+    "/users/{userId}/watchlist/{watchlistId}": {
+      "schema": "WatchlistSector",
+      "description": "Monitored flight corridors bookmarked by user"
+    },
+    "/users/{userId}/savedReports/{reportId}": {
+      "schema": "SavedReport",
+      "description": "Archived MoSPI and RBI intelligence reports"
+    }
+  }
+}

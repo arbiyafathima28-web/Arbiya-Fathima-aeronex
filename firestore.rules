@@ -1,0 +1,133 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default-deny all undefined paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Harmless probe document for boot connection testing
+    match /test/connection {
+      allow read: if true;
+    }
+
+    // Reusable Global Hardened Primitives
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Validation Blueprint: UserProfile
+    function isValidUserProfile(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.email is string && data.email.size() <= 150 &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 150)) &&
+             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1000)) &&
+             (!('preferredMethod' in data) || (data.preferredMethod in ['laspeyres', 'fisher', 'paasche', 'jevons'])) &&
+             (!('role' in data) || (data.role is string && data.role.size() <= 100)) &&
+             (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64)) &&
+             (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 64));
+    }
+
+    // Validation Blueprint: SimulationScenario
+    function isValidSimulation(data, userId) {
+      return data.id is string && isValidId(data.id) &&
+             data.userId is string && data.userId == userId &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 120 &&
+             data.fuelShockPercent is number &&
+             data.capRule is string && data.capRule.size() <= 50 &&
+             data.festivalSurge is number &&
+             data.capacityShock is number &&
+             data.cpiBasisPointsImpact is number &&
+             data.nationalSurplusShiftCr is number &&
+             data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    // Validation Blueprint: WatchlistSector
+    function isValidWatchlist(data, userId) {
+      return data.id is string && isValidId(data.id) &&
+             data.userId is string && data.userId == userId &&
+             data.routeId is string && data.routeId.size() <= 50 &&
+             data.sectorName is string && data.sectorName.size() <= 100 &&
+             data.alertThreshold is number &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 500)) &&
+             data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    // Validation Blueprint: SavedReport
+    function isValidSavedReport(data, userId) {
+      return data.id is string && isValidId(data.id) &&
+             data.userId is string && data.userId == userId &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 150 &&
+             data.analysisType is string && data.analysisType.size() <= 60 &&
+             data.content is string && data.content.size() <= 25000 &&
+             data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    // Root Collection: users
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidUserProfile(incoming(), userId);
+      allow delete: if isOwner(userId);
+
+      // Subcollection: Saved Simulation Scenarios
+      match /simulations/{simulationId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(simulationId);
+        allow list: if isOwner(userId) && isValidId(userId);
+        allow create: if isOwner(userId) && isValidId(userId) && isValidId(simulationId) &&
+                      isValidSimulation(incoming(), userId) && incoming().id == simulationId;
+        allow update: if isOwner(userId) && isValidId(userId) && isValidId(simulationId) &&
+                      isValidSimulation(incoming(), userId) &&
+                      incoming().id == existing().id &&
+                      incoming().userId == existing().userId &&
+                      incoming().createdAt == existing().createdAt;
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(simulationId);
+      }
+
+      // Subcollection: Sector Watchlists
+      match /watchlist/{watchlistId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(watchlistId);
+        allow list: if isOwner(userId) && isValidId(userId);
+        allow create: if isOwner(userId) && isValidId(userId) && isValidId(watchlistId) &&
+                      isValidWatchlist(incoming(), userId) && incoming().id == watchlistId;
+        allow update: if isOwner(userId) && isValidId(userId) && isValidId(watchlistId) &&
+                      isValidWatchlist(incoming(), userId) &&
+                      incoming().id == existing().id &&
+                      incoming().userId == existing().userId &&
+                      incoming().createdAt == existing().createdAt;
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(watchlistId);
+      }
+
+      // Subcollection: Saved AI & MoSPI Reports
+      match /savedReports/{reportId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(reportId);
+        allow list: if isOwner(userId) && isValidId(userId);
+        allow create: if isOwner(userId) && isValidId(userId) && isValidId(reportId) &&
+                      isValidSavedReport(incoming(), userId) && incoming().id == reportId;
+        allow update: if isOwner(userId) && isValidId(userId) && isValidId(reportId) &&
+                      isValidSavedReport(incoming(), userId) &&
+                      incoming().id == existing().id &&
+                      incoming().userId == existing().userId &&
+                      incoming().createdAt == existing().createdAt;
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(reportId);
+      }
+    }
+  }
+}

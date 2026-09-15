@@ -1,0 +1,6 @@
+{
+  "name": "AeroNex - Airfare Price Index & CPI Intelligence",
+  "description": "Real-time Airfare Price Index for India through automated scraping of airline and OTA portals to augment the Consumer Price Index (CPI).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
