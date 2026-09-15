@@ -1,14 +1,19 @@
-import React, { useState, useEffect } from "react";
-import { Header } from "./components/Header";
-import { Navigation } from "./components/Navigation";
+import React, { useState, useEffect, useCallback } from "react";
+import { Sidebar } from "./components/navigation/Sidebar";
+import { TopHeader } from "./components/navigation/TopHeader";
 import { OverviewDashboard } from "./components/OverviewDashboard";
-import { ScraperRadar } from "./components/ScraperRadar";
+import { IndiaRouteMap } from "./components/IndiaRouteMap";
 import { RouteFareExplorer } from "./components/RouteFareExplorer";
+import { AdvanceBookingView } from "./components/views/AdvanceBookingView";
+import { FareCompositionView } from "./components/views/FareCompositionView";
 import { OtaMarginAnalyzer } from "./components/OtaMarginAnalyzer";
+import { AirfareIndexView } from "./components/views/AirfareIndexView";
+import { CpiAugmentationView } from "./components/views/CpiAugmentationView";
 import { IndexMethodology } from "./components/IndexMethodology";
 import { PolicySimulator } from "./components/PolicySimulator";
 import { GeminiAnalyst } from "./components/GeminiAnalyst";
-import { VisualStudio } from "./components/VisualStudio";
+import { BriefingStudioView } from "./components/views/BriefingStudioView";
+import { AdminDashboardView } from "./components/views/AdminDashboardView";
 import { ExportModal } from "./components/ExportModal";
 import {
   ROUTES_DATA,
@@ -17,11 +22,24 @@ import {
   LIVE_SCRAPE_FEED,
   ANOMALIES_DATA,
 } from "./data/mockData";
-import { RouteData, IndexTimeSeriesPoint, ScraperWorkerInfo, LiveScrapeItem, AnomalyAlert } from "./types";
+import {
+  RouteData,
+  IndexTimeSeriesPoint,
+  ScraperWorkerInfo,
+  LiveScrapeItem,
+  AnomalyAlert,
+} from "./types";
+import { SectionId, SubsectionId } from "./types/navigation";
+import { getDefaultSubsection } from "./components/navigation/navigationConfig";
 import { Plane, ShieldCheck, Database, Award, ExternalLink } from "lucide-react";
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<string>("overview");
+  const [activeSection, setActiveSection] = useState<SectionId>("overview");
+  const [activeSubsection, setActiveSubsection] = useState<SubsectionId>(
+    getDefaultSubsection("overview")
+  );
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
   const [routes, setRoutes] = useState<RouteData[]>(ROUTES_DATA);
   const [timeSeries, setTimeSeries] = useState<IndexTimeSeriesPoint[]>(HISTORICAL_INDEX_DATA);
   const [workers, setWorkers] = useState<ScraperWorkerInfo[]>(SCRAPER_WORKERS);
@@ -31,12 +49,12 @@ export function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
 
-  // Prefill state for Gemini AI prompt when jumped from other tabs
+  // Prefill state for Gemini AI prompt when jumped from other views
   const [aiPrefillPrompt, setAiPrefillPrompt] = useState<string>("");
   const [aiPrefillType, setAiPrefillType] = useState<string>("mospi_brief");
   const [aiPrefillContext, setAiPrefillContext] = useState<any>(null);
 
-  // Fetch initial telemetry from backend if available
+  // Load telemetry from backend if available
   useEffect(() => {
     async function loadBackendData() {
       try {
@@ -62,7 +80,7 @@ export function App() {
           if (Array.isArray(aData) && aData.length > 0) setAnomalies(aData);
         }
       } catch (err) {
-        console.log("[AeroNex] Using local fallback dataset:", err);
+        console.log("[AeroNex] Initialized with statistical baseline dataset:", err);
       }
     }
     loadBackendData();
@@ -79,7 +97,7 @@ export function App() {
         if (data.liveFeed) setLiveFeed(data.liveFeed);
       }
     } catch (e) {
-      console.log("[AeroNex] Telemetry refresh notice:", e);
+      console.log("[AeroNex] Telemetry refresh status:", e);
     } finally {
       setTimeout(() => setIsRefreshing(false), 600);
     }
@@ -102,8 +120,7 @@ export function App() {
       }
       throw new Error("Invalid response format");
     } catch (e) {
-      console.log("[AeroNex] Using simulated scrape pass:", e);
-      // Local fallback
+      console.log("[AeroNex] Executing simulated scraper pass:", e);
       const newItem: LiveScrapeItem = {
         id: "mock-" + Date.now(),
         timestamp: new Date().toLocaleTimeString("en-IN", { hour12: false }),
@@ -120,114 +137,266 @@ export function App() {
     }
   };
 
+  const handleNavigate = useCallback(
+    (sectionId: SectionId, subsectionId?: SubsectionId) => {
+      setActiveSection(sectionId);
+      if (subsectionId) {
+        setActiveSubsection(subsectionId);
+      } else {
+        setActiveSubsection(getDefaultSubsection(sectionId));
+      }
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+    []
+  );
+
+  // Map legacy tabs from Overview or widgets to new hierarchical routing
+  const handleLegacyNavigate = (legacyTab: string) => {
+    switch (legacyTab) {
+      case "overview":
+        handleNavigate("overview");
+        break;
+      case "routes":
+        handleNavigate("live-data", "route-explorer");
+        break;
+      case "map":
+        handleNavigate("live-data", "india-map");
+        break;
+      case "advance":
+        handleNavigate("live-data", "advance-booking");
+        break;
+      case "composition":
+        handleNavigate("live-data", "fare-composition");
+        break;
+      case "otas":
+        handleNavigate("live-data", "airline-ota");
+        break;
+      case "index":
+        handleNavigate("airfare-index", "national-afpi");
+        break;
+      case "cpi":
+        handleNavigate("cpi-augmentation", "cpi-impact");
+        break;
+      case "methodology":
+        handleNavigate("methodology");
+        break;
+      case "simulator":
+        handleNavigate("policy-simulator");
+        break;
+      case "analyst":
+        handleNavigate("ai-analyst");
+        break;
+      case "briefing":
+      case "infographics":
+        handleNavigate("briefing-studio", "generate-brief");
+        break;
+      case "radar":
+      case "admin":
+        handleNavigate("admin", "scraper-health");
+        break;
+      default:
+        handleNavigate("overview");
+    }
+  };
+
   const handleTriggerAiFromOtherTab = (prompt: string, analysisType: string, contextData: any) => {
     setAiPrefillPrompt(prompt);
     setAiPrefillType(analysisType);
     setAiPrefillContext(contextData);
-    setActiveTab("analyst");
+    handleNavigate("ai-analyst");
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-black">
-      {/* Top App Header */}
-      <Header
-        onRefresh={handleRefresh}
-        isRefreshing={isRefreshing}
-        onOpenExport={() => setIsExportOpen(true)}
-        onSelectTab={(tabId) => setActiveTab(tabId)}
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex font-sans selection:bg-cyan-500 selection:text-black antialiased">
+      {/* 1. PROFESSIONAL FIXED LEFT SIDEBAR (Desktop persistent, Mobile drawer) */}
+      <Sidebar
+        activeSection={activeSection}
+        activeSubsection={activeSubsection}
+        onNavigate={handleNavigate}
+        mobileOpen={isMobileSidebarOpen}
+        onMobileClose={() => setIsMobileSidebarOpen(false)}
       />
 
-      {/* Main Navigation Tabs */}
-      <Navigation
-        activeTab={activeTab}
-        onTabChange={(tabId) => setActiveTab(tabId)}
-        anomaliesCount={anomalies.length}
-      />
+      {/* 2. MAIN APPLICATION WORKSPACE AREA */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
+        {/* COMPACT TOP HEADER */}
+        <TopHeader
+          activeSection={activeSection}
+          activeSubsection={activeSubsection}
+          onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
+          onRefresh={handleRefresh}
+          isRefreshing={isRefreshing}
+          onOpenExport={() => setIsExportOpen(true)}
+          onNavigate={handleNavigate}
+        />
 
-      {/* Main App Canvas */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
-        {activeTab === "overview" && (
-          <OverviewDashboard
-            routes={routes}
-            timeSeries={timeSeries}
-            anomalies={anomalies}
-            onSelectRoute={(rId) => {
-              setSelectedRouteId(rId);
-              setActiveTab("routes");
-            }}
-            onNavigateToTab={(tabId) => setActiveTab(tabId)}
-            onTriggerAiAnalysis={handleTriggerAiFromOtherTab}
-          />
-        )}
+        {/* WORKSPACE CONTENT CANVAS */}
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+          {/* SECTION 1: OVERVIEW */}
+          {activeSection === "overview" && (
+            <OverviewDashboard
+              routes={routes}
+              timeSeries={timeSeries}
+              anomalies={anomalies}
+              onSelectRoute={(rId) => {
+                setSelectedRouteId(rId);
+                handleNavigate("live-data", "route-explorer");
+              }}
+              onNavigateToTab={handleLegacyNavigate}
+              onTriggerAiAnalysis={handleTriggerAiFromOtherTab}
+            />
+          )}
 
-        {activeTab === "radar" && (
-          <ScraperRadar
-            workers={workers}
-            liveFeed={liveFeed}
-            onTriggerScrape={handleTriggerScrape}
-          />
-        )}
+          {/* SECTION 2: LIVE DATA */}
+          {activeSection === "live-data" && (
+            <>
+              {activeSubsection === "route-explorer" && (
+                <RouteFareExplorer
+                  routes={routes}
+                  selectedRouteId={selectedRouteId}
+                  onSelectRoute={(id) => setSelectedRouteId(id)}
+                  anomalies={anomalies}
+                  onOpenMap={() => handleNavigate("live-data", "india-map")}
+                />
+              )}
 
-        {activeTab === "routes" && (
-          <RouteFareExplorer
-            routes={routes}
-            selectedRouteId={selectedRouteId}
-            onSelectRoute={(id) => setSelectedRouteId(id)}
-          />
-        )}
+              {activeSubsection === "india-map" && (
+                <IndiaRouteMap
+                  routes={routes}
+                  selectedRouteId={selectedRouteId}
+                  onSelectRoute={(id) => setSelectedRouteId(id)}
+                />
+              )}
 
-        {activeTab === "otas" && <OtaMarginAnalyzer routes={routes} />}
+              {activeSubsection === "advance-booking" && (
+                <AdvanceBookingView
+                  routes={routes}
+                  onSelectRouteForExplorer={(rId) => {
+                    setSelectedRouteId(rId);
+                    handleNavigate("live-data", "route-explorer");
+                  }}
+                />
+              )}
 
-        {activeTab === "methodology" && <IndexMethodology routes={routes} />}
+              {activeSubsection === "fare-composition" && (
+                <FareCompositionView
+                  routes={routes}
+                  onSelectRouteForExplorer={(rId) => {
+                    setSelectedRouteId(rId);
+                    handleNavigate("live-data", "route-explorer");
+                  }}
+                  onNavigateToOtaComparison={() => handleNavigate("live-data", "ota-comparison")}
+                />
+              )}
 
-        {activeTab === "simulator" && (
-          <PolicySimulator
-            routes={routes}
-            onTriggerAiAnalysis={handleTriggerAiFromOtherTab}
-          />
-        )}
+              {(activeSubsection === "ota-comparison" || activeSubsection === "airline-ota") && (
+                <OtaMarginAnalyzer routes={routes} />
+              )}
+            </>
+          )}
 
-        {activeTab === "analyst" && (
-          <GeminiAnalyst
-            routes={routes}
-            timeSeries={timeSeries}
-            prefilledPrompt={aiPrefillPrompt}
-            prefilledType={aiPrefillType}
-            prefilledContext={aiPrefillContext}
-          />
-        )}
+          {/* SECTION 3: AIRFARE INDEX */}
+          {activeSection === "airfare-index" && (
+            <AirfareIndexView
+              routes={routes}
+              timeSeries={timeSeries}
+              currentSubsection={activeSubsection as any}
+              onSelectSubsection={(sub) => handleNavigate("airfare-index", sub)}
+              onSelectRouteForExplorer={(rId) => {
+                setSelectedRouteId(rId);
+                handleNavigate("live-data", "route-explorer");
+              }}
+            />
+          )}
 
-        {activeTab === "infographics" && <VisualStudio />}
-      </main>
+          {/* SECTION 4: CPI AUGMENTATION */}
+          {activeSection === "cpi-augmentation" && (
+            <CpiAugmentationView
+              routes={routes}
+              timeSeries={timeSeries}
+              currentSubsection={activeSubsection as any}
+              onSelectSubsection={(sub) => handleNavigate("cpi-augmentation", sub)}
+            />
+          )}
 
-      {/* Export Dataset Modal */}
+          {/* SECTION 5: METHODOLOGY */}
+          {activeSection === "methodology" && (
+            <IndexMethodology routes={routes} />
+          )}
+
+          {/* SECTION 6: POLICY SIMULATOR */}
+          {activeSection === "policy-simulator" && (
+            <PolicySimulator
+              routes={routes}
+              onTriggerAiAnalysis={handleTriggerAiFromOtherTab}
+            />
+          )}
+
+          {/* SECTION 7: AI INFLATION ANALYST */}
+          {activeSection === "ai-analyst" && (
+            <GeminiAnalyst
+              routes={routes}
+              timeSeries={timeSeries}
+              prefilledPrompt={aiPrefillPrompt}
+              prefilledType={aiPrefillType}
+              prefilledContext={aiPrefillContext}
+            />
+          )}
+
+          {/* SECTION 8: BRIEFING STUDIO */}
+          {activeSection === "briefing-studio" && (
+            <BriefingStudioView
+              routes={routes}
+              timeSeries={timeSeries}
+              currentSubsection={activeSubsection as any}
+              onSelectSubsection={(sub) => handleNavigate("briefing-studio", sub)}
+              onOpenExportModal={() => setIsExportOpen(true)}
+            />
+          )}
+
+          {/* SECTION 9: ADMIN */}
+          {activeSection === "admin" && (
+            <AdminDashboardView
+              workers={workers}
+              liveFeed={liveFeed}
+              currentSubsection={activeSubsection as any}
+              onSelectSubsection={(sub) => handleNavigate("admin", sub)}
+              onTriggerScrape={handleTriggerScrape}
+            />
+          )}
+        </main>
+
+        {/* WORKSPACE FOOTER */}
+        <footer className="border-t border-slate-800/80 bg-slate-950 py-5 text-xs text-slate-400 mt-auto">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-md bg-cyan-950 border border-cyan-800/50 flex items-center justify-center">
+                <Plane className="w-3 h-3 text-cyan-400 transform -rotate-45" />
+              </div>
+              <span className="font-bold text-white tracking-tight">AeroNex Intelligence</span>
+              <span className="text-slate-500">|</span>
+              <span className="text-slate-400">National Statistical Office (NSO) · RBI MPC Framework</span>
+            </div>
+
+            <div className="flex items-center gap-4 text-[11px] font-mono text-slate-500">
+              <span className="flex items-center gap-1.5 text-emerald-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                Telemetry Live
+              </span>
+              <span>Base 2024 = 100</span>
+              <span>Laspeyres & Fisher Ideal</span>
+            </div>
+          </div>
+        </footer>
+      </div>
+
+      {/* EXPORT DATASET MODAL */}
       <ExportModal
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         routes={routes}
         timeSeries={timeSeries}
       />
-
-      {/* Footer */}
-      <footer className="border-t border-slate-800/80 bg-slate-950 py-6 text-xs text-slate-400 mt-12">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-cyan-600/20 border border-cyan-500/40 flex items-center justify-center">
-              <Plane className="w-3.5 h-3.5 text-cyan-400 transform -rotate-45" />
-            </div>
-            <div>
-              <span className="font-bold text-white">AeroNex</span> — Real-time Airfare Price Index (APIx)
-            </div>
-          </div>
-
-          <div className="text-center md:text-right space-y-0.5 font-mono text-[11px] text-slate-500">
-            <div>Development of Real-time Airfare Price Index for CPI Augmentation</div>
-            <div className="text-slate-400">
-              National Statistical Office (NSO) · Ministry of Civil Aviation (MoCA) · RBI MPC
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
